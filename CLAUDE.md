@@ -42,3 +42,35 @@ cmd/mavis/main.go
 - **Content filtering:** Word drills and code snippets are filtered to only include characters the user has unlocked. Word drills are skipped for levels 1-2 (too few characters for real words).
 - **Centering uses Align, not Place:** `lipgloss.Place` centers each line independently, which breaks the keyboard stagger. The app uses `lipgloss.NewStyle().Align().AlignVertical()` instead.
 - **Background-colored keys, not borders:** Box-drawing border characters render inconsistently across terminals. Keys use solid background blocks instead.
+
+## UI Development with tmux
+
+Nelson runs `mavis` in a tmux session for testing. Use this workflow to build, restart, and visually verify UI changes. All tmux commands require `dangerouslyDisableSandbox: true`.
+
+**Find the session:**
+```bash
+tmux list-sessions | grep mavis    # session name follows pattern "mavis-NN"
+```
+
+**Build, install, and restart:**
+```bash
+go build ./cmd/mavis && go install ./cmd/mavis
+tmux send-keys -t <session>:mavis Escape   # quit the running app (Escape, not 'q')
+sleep 1
+tmux send-keys -t <session>:mavis "mavis" Enter
+```
+
+**Peek at the UI (text only, no colors):**
+```bash
+gp -s <session> mavis
+```
+
+**Peek with ANSI escape codes (to verify colors/backgrounds):**
+```bash
+tmux capture-pane -t <session>:mavis -p -e | cat -v
+```
+
+Notes:
+- Use `Escape` to quit mavis, not `q` (which types into the drill).
+- `gp` must be called with `-s <session>` since Claude is not inside tmux.
+- Text captures strip styling. Use the ANSI capture or ask Nelson for a screenshot to verify visual rendering.
