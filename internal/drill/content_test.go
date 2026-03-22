@@ -59,3 +59,24 @@ func TestLoadWordList(t *testing.T) {
 		t.Errorf("word list too small: %d words", len(words))
 	}
 }
+
+func TestFilterCodeSnippets(t *testing.T) {
+	snippets := LoadCodeSnippets()
+	if len(snippets) == 0 {
+		t.Fatal("should have at least some code snippets")
+	}
+
+	keys := make(map[rune]bool)
+	for _, r := range []rune{'f', 'j', 'd', 'k', 's', 'l', 'a', ';', 'g', 'h', 't', 'y', 'r', 'u', 'e', 'i', 'w', 'o', 'q', 'p'} {
+		keys[r] = true
+	}
+
+	filtered := FilterCodeSnippets(snippets, keys)
+	for _, s := range filtered {
+		for _, ch := range s.Code {
+			if ch != ' ' && ch != '\n' && !keys[ch] {
+				t.Errorf("snippet %q contains locked char %c", s.Code[:20], ch)
+			}
+		}
+	}
+}

@@ -45,3 +45,24 @@ func GenerateWordDrill(words []string, n int) []string {
 	}
 	return drill
 }
+
+func LoadCodeSnippets() []data.CodeSnippet {
+	return data.Snippets
+}
+
+func FilterCodeSnippets(snippets []data.CodeSnippet, allowedKeys map[rune]bool) []data.CodeSnippet {
+	var filtered []data.CodeSnippet
+	for _, s := range snippets {
+		ok := true
+		for _, ch := range s.Code {
+			if ch != ' ' && ch != '\n' && !allowedKeys[ch] {
+				ok = false
+				break
+			}
+		}
+		if ok {
+			filtered = append(filtered, s)
+		}
+	}
+	return filtered
+}
