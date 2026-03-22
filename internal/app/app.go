@@ -25,6 +25,7 @@ const (
 	stateDrillComplete
 	statePhaseComplete
 	stateLevelComplete
+	stateCelebrating
 )
 
 type Model struct {
@@ -42,7 +43,8 @@ type Model struct {
 	phaseKeystrokes int
 	phaseErrors     int
 
-	message string
+	message     string
+	celebration *celebration
 
 	width  int
 	height int
@@ -79,6 +81,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		return m, nil
 
+	case tickMsg:
+		if m.state == stateCelebrating && m.celebration != nil {
+			m.celebration.tick()
+			if !m.celebration.active() {
+				return m, nil
+			}
+			return m, tickCmd()
+		}
+		return m, nil
+
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyCtrlC, tea.KeyEsc:
@@ -91,6 +103,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyCtrlB:
 			m.skipToLevel(m.currentLevel.Number - 1)
 
+		case tea.KeyCtrlT:
+			// Cheat: trigger pass celebration
+			m.celebration = spawnCelebration(tierPass, m.state, "Phase complete! Accuracy: 97.3%.")
+			m.state = stateCelebrating
+			return m, nil
+
+		case tea.KeyCtrlY:
+			// Cheat: trigger perfect celebration
+			m.celebration = spawnCelebration(tierPerfect, m.state, "PERFECT!")
+			m.state = stateCelebrating
+			return m, tickCmd()
+
+		case tea.KeyCtrlU:
+			// Cheat: trigger level-up celebration
+			msg := fmt.Sprintf("Level %d complete!", m.currentLevel.Number)
+			m.celebration = spawnCelebration(tierLevelUp, m.state, msg)
+			m.state = stateCelebrating
+			return m, tickCmd()
+
 		case tea.KeyBackspace:
 			if m.state == stateDrilling {
 				m.drillState.HandleBackspace()
@@ -99,6 +130,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case tea.KeyEnter:
 			switch m.state {
+			case stateCelebrating:
+				if m.celebration != nil {
+					m.state = m.celebration.nextState
+					m.celebration = nil
+				}
 			case stateDrillComplete:
 				m.advanceDrill()
 			case statePhaseComplete:
@@ -113,7 +149,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.updateKeyboard()
 
 				if m.drillState.Complete {
-					m.onDrillComplete()
+					cmd := m.onDrillComplete()
+					return m, cmd
 				}
 			}
 
@@ -127,7 +164,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.updateKeyboard()
 
 				if m.drillState.Complete {
-					m.onDrillComplete()
+					cmd := m.onDrillComplete()
+					return m, cmd
 				}
 			}
 		}
@@ -151,7 +189,10 @@ func (m Model) View() string {
 	))
 	sb.WriteString("\n\n")
 
-	if m.message != "" {
+	if m.state == stateCelebrating && m.celebration != nil {
+		sb.WriteString(m.celebration.render(m.width))
+		sb.WriteString("\n\n")
+	} else if m.message != "" {
 		msgStyle := lipgloss.NewStyle().Bold(true)
 		sb.WriteString(msgStyle.Render(m.message))
 		sb.WriteString("\n\n")
@@ -212,7 +253,7 @@ func (m *Model) generateDrill(unlocked map[rune]bool) *drill.DrillState {
 	return drill.NewDrillState(prompt)
 }
 
-func (m *Model) onDrillComplete() {
+func (m *Model) onDrillComplete() tea.Cmd {
 	m.phaseKeystrokes += m.drillState.TotalKeystrokes
 	m.phaseErrors += m.drillState.Errors
 
@@ -227,32 +268,47 @@ func (m *Model) onDrillComplete() {
 	}
 	m.progress.RecordSession(session)
 
+	drillAcc := m.drillState.Accuracy()
+
 	if m.drillNum >= drillsPerPhase {
 		phaseAcc := phaseAccuracy(m.phaseKeystrokes, m.phaseErrors)
 		if level.PhasePassed(phaseAcc) {
 			m.progress.CompletePhase(m.currentLevel.Number, m.currentPhase, phaseAcc, m.drillState.WPM())
 			next := level.NextPhase(m.currentPhase, m.currentLevel)
 			if next == "" {
-				m.state = stateLevelComplete
-				m.message = fmt.Sprintf("Level %d complete! Accuracy: %.1f%%. Press Enter to continue.",
-					m.currentLevel.Number, phaseAcc)
-			} else {
-				m.state = statePhaseComplete
-				m.message = fmt.Sprintf("Phase complete! Accuracy: %.1f%%. Press Enter for %s drills.",
-					phaseAcc, next)
+				// Level complete - highest tier celebration
+				msg := fmt.Sprintf("Level %d complete! Accuracy: %.1f%%.", m.currentLevel.Number, phaseAcc)
+				m.celebration = spawnCelebration(tierLevelUp, stateLevelComplete, msg)
+				m.state = stateCelebrating
+				m.message = ""
+				m.saveProgress()
+				return tickCmd()
 			}
+			// Phase passed - green styled message (no animation)
+			msg := fmt.Sprintf("Phase complete! Accuracy: %.1f%%. Press Enter for %s drills.", phaseAcc, next)
+			m.state = statePhaseComplete
+			m.message = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(ui.ColorCorrect)).Render("+ " + msg)
 		} else {
 			m.state = statePhaseComplete
-			m.message = fmt.Sprintf("Phase accuracy: %.1f%% (need 95%%). Press Enter to retry.",
-				phaseAcc)
+			m.message = fmt.Sprintf("Phase accuracy: %.1f%% (need 95%%). Press Enter to retry.", phaseAcc)
 		}
 	} else {
+		// Individual drill complete
+		if drillAcc == 100.0 {
+			msg := fmt.Sprintf("PERFECT! Drill %d/%d.", m.drillNum, drillsPerPhase)
+			m.celebration = spawnCelebration(tierPerfect, stateDrillComplete, msg)
+			m.state = stateCelebrating
+			m.message = ""
+			m.saveProgress()
+			return tickCmd()
+		}
 		m.state = stateDrillComplete
 		m.message = fmt.Sprintf("Drill %d/%d done. Accuracy: %.1f%%. Press Enter to continue.",
-			m.drillNum, drillsPerPhase, m.drillState.Accuracy())
+			m.drillNum, drillsPerPhase, drillAcc)
 	}
 
 	m.saveProgress()
+	return nil
 }
 
 func (m *Model) advanceDrill() {
