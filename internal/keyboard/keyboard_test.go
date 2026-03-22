@@ -27,8 +27,8 @@ func TestKeyboardHighlightsNextKey(t *testing.T) {
 	kb := New(unlocked, 'f')
 	view := kb.View()
 
-	if !strings.Contains(view, "f") {
-		t.Error("keyboard should display the 'f' key")
+	if !strings.Contains(view, "F") {
+		t.Error("keyboard should display the 'F' key")
 	}
 }
 

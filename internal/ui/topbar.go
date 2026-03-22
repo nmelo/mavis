@@ -8,7 +8,7 @@ import (
 
 var topBarStyle = lipgloss.NewStyle().
 	Bold(true).
-	Padding(0, 1)
+	Padding(1, 3)
 
 func RenderTopBar(levelName string, wpm, accuracy float64, drillNum, totalDrills int) string {
 	level := fmt.Sprintf("Level: %s", levelName)
@@ -17,6 +17,6 @@ func RenderTopBar(levelName string, wpm, accuracy float64, drillNum, totalDrills
 	progress := fmt.Sprintf("%d/%d", drillNum, totalDrills)
 
 	return topBarStyle.Render(
-		fmt.Sprintf("  %s    %s    %s    %s", level, wpmStr, accStr, progress),
+		fmt.Sprintf("  %s      %s      %s      %s", level, wpmStr, accStr, progress),
 	)
 }

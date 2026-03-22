@@ -7,7 +7,7 @@ import (
 
 func TestRenderPromptShowsText(t *testing.T) {
 	result := RenderPrompt([]rune("fjfj"), 2, false)
-	if !strings.Contains(result, "f") {
+	if !strings.Contains(result, "F") {
 		t.Error("prompt should contain characters")
 	}
 }
