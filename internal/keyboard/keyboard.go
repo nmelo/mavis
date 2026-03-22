@@ -16,23 +16,18 @@ var rows = [][]rune{
 	{'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/'},
 }
 
-var (
-	keyBase = lipgloss.NewStyle().
-		Width(3).
-		Align(lipgloss.Center).
-		Padding(0, 1).
-		MarginRight(1)
-
-	lockedKey = keyBase.
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color(ui.ColorLocked)).
-			Foreground(lipgloss.Color(ui.ColorLocked))
-
-	spaceBase = lipgloss.NewStyle().
-			Width(30).
-			Align(lipgloss.Center).
-			Padding(0, 1)
+const (
+	keyBg       = "#2A2A2E"
+	keyActiveBg = "#3A3A40"
 )
+
+var keyStyle = lipgloss.NewStyle().
+	Width(5).
+	Align(lipgloss.Center).
+	Background(lipgloss.Color(keyBg)).
+	Padding(1, 1).
+	MarginRight(1).
+	MarginBottom(1)
 
 type Keyboard struct {
 	unlocked map[rune]bool
@@ -55,7 +50,7 @@ func (k *Keyboard) View() string {
 		for _, key := range row {
 			keys = append(keys, k.renderKey(key))
 		}
-		indent := strings.Repeat("  ", rowIdx)
+		indent := strings.Repeat("   ", rowIdx)
 		rowView := indent + lipgloss.JoinHorizontal(lipgloss.Top, keys...)
 		rowViews = append(rowViews, rowView)
 	}
@@ -65,26 +60,27 @@ func (k *Keyboard) View() string {
 	space := k.renderSpaceBar()
 	legend := k.renderLegend()
 
-	return kb + "\n" + space + "\n\n" + legend
+	return kb + "\n\n" + space + "\n\n" + legend
 }
 
 func (k *Keyboard) renderKey(key rune) string {
 	label := string(unicode.ToUpper(key))
 
 	if !k.unlocked[key] {
-		return lockedKey.Render(label)
+		return keyStyle.
+			Foreground(lipgloss.Color(ui.ColorLocked)).
+			Render(label)
 	}
 
 	finger := level.FingerForKey(key)
 	color := lipgloss.Color(ui.ColorForFinger(finger))
 
-	style := keyBase.
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(color).
+	style := keyStyle.
+		Background(lipgloss.Color(keyActiveBg)).
 		Foreground(color)
 
 	if key == k.nextKey {
-		style = style.
+		style = keyStyle.
 			Bold(true).
 			Background(color).
 			Foreground(lipgloss.Color("#000000"))
@@ -96,22 +92,25 @@ func (k *Keyboard) renderKey(key rune) string {
 func (k *Keyboard) renderSpaceBar() string {
 	label := "SPACE"
 
+	spaceStyle := lipgloss.NewStyle().
+		Width(34).
+		Align(lipgloss.Center).
+		Background(lipgloss.Color(keyBg)).
+		Padding(0, 1)
+
 	if !k.unlocked[' '] {
-		return spaceBase.
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color(ui.ColorLocked)).
+		return spaceStyle.
 			Foreground(lipgloss.Color(ui.ColorLocked)).
 			Render(label)
 	}
 
 	color := lipgloss.Color(ui.ColorThumb)
-	style := spaceBase.
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(color).
+	style := spaceStyle.
+		Background(lipgloss.Color(keyActiveBg)).
 		Foreground(color)
 
 	if k.nextKey == ' ' {
-		style = style.
+		style = spaceStyle.
 			Bold(true).
 			Background(color).
 			Foreground(lipgloss.Color("#000000"))
@@ -134,9 +133,13 @@ func (k *Keyboard) renderLegend() string {
 
 	var parts []string
 	for _, e := range entries {
-		dot := lipgloss.NewStyle().Foreground(lipgloss.Color(e.color)).Render("●")
-		lbl := lipgloss.NewStyle().Foreground(lipgloss.Color(e.color)).Render(e.label)
-		parts = append(parts, dot+" "+lbl)
+		swatch := lipgloss.NewStyle().
+			Background(lipgloss.Color(e.color)).
+			Render("  ")
+		lbl := lipgloss.NewStyle().
+			Foreground(lipgloss.Color(e.color)).
+			Render(" " + e.label)
+		parts = append(parts, swatch+lbl)
 	}
 
 	return "  " + strings.Join(parts, "    ")
