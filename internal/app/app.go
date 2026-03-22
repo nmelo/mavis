@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"math/rand"
 	"strings"
 	"time"
 
@@ -59,7 +60,7 @@ func New(prog *progress.Progress, progressPath string, words []string) Model {
 	}
 
 	m.drillState = m.generateDrill(unlocked)
-	m.kb = keyboard.New(unlocked, m.drillState.Prompt[0])
+	m.kb = keyboard.New(unlocked, m.firstPromptKey())
 
 	return m
 }
@@ -104,6 +105,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case tea.KeySpace:
 			if m.state == stateDrilling {
+				// Ignore space during char drills (space is for word/code drills only)
+				if m.currentPhase == progress.PhaseChars {
+					break
+				}
 				m.drillState.HandleKey(' ')
 				m.updateKeyboard()
 
@@ -127,7 +132,6 @@ func (m Model) View() string {
 
 	sb.WriteString(ui.RenderPrompt(
 		m.drillState.Prompt,
-		nil,
 		m.drillState.Position,
 		m.drillState.HasError,
 	))
@@ -162,11 +166,18 @@ func (m *Model) generateDrill(unlocked map[rune]bool) *drill.DrillState {
 		words := drill.GenerateWordDrill(filtered, 5)
 		prompt = []rune(strings.Join(words, " "))
 	case progress.PhaseCode:
-		prompt = drill.GenerateCharDrill(
-			level.UnlockedKeys(m.currentLevel.Number),
-			m.currentLevel.NewKeys,
-			drillLength,
-		)
+		allSnippets := drill.LoadCodeSnippets()
+		filtered := drill.FilterCodeSnippets(allSnippets, unlocked)
+		if len(filtered) > 0 {
+			snippet := filtered[rand.Intn(len(filtered))]
+			prompt = []rune(snippet.Code)
+		} else {
+			prompt = drill.GenerateCharDrill(
+				level.UnlockedKeys(m.currentLevel.Number),
+				m.currentLevel.NewKeys,
+				drillLength,
+			)
+		}
 	}
 
 	return drill.NewDrillState(prompt)
@@ -219,7 +230,7 @@ func (m *Model) advanceDrill() {
 	m.drillNum++
 	unlocked := unlockedKeySet(m.currentLevel.Number)
 	m.drillState = m.generateDrill(unlocked)
-	m.kb = keyboard.New(unlocked, m.drillState.Prompt[0])
+	m.kb = keyboard.New(unlocked, m.firstPromptKey())
 	m.state = stateDrilling
 	m.message = ""
 }
@@ -239,7 +250,7 @@ func (m *Model) advancePhase() {
 
 	unlocked := unlockedKeySet(m.currentLevel.Number)
 	m.drillState = m.generateDrill(unlocked)
-	m.kb = keyboard.New(unlocked, m.drillState.Prompt[0])
+	m.kb = keyboard.New(unlocked, m.firstPromptKey())
 	m.state = stateDrilling
 	m.message = ""
 }
@@ -258,9 +269,16 @@ func (m *Model) advanceLevel() {
 
 	unlocked := unlockedKeySet(m.currentLevel.Number)
 	m.drillState = m.generateDrill(unlocked)
-	m.kb = keyboard.New(unlocked, m.drillState.Prompt[0])
+	m.kb = keyboard.New(unlocked, m.firstPromptKey())
 	m.state = stateDrilling
 	m.message = ""
+}
+
+func (m *Model) firstPromptKey() rune {
+	if len(m.drillState.Prompt) > 0 {
+		return m.drillState.Prompt[0]
+	}
+	return 'f' // fallback, should never happen
 }
 
 func (m *Model) updateKeyboard() {

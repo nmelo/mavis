@@ -6,7 +6,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-func RenderPrompt(prompt []rune, input []rune, position int, hasError bool) string {
+func RenderPrompt(prompt []rune, position int, hasError bool) string {
 	var sb strings.Builder
 
 	promptStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(ColorDimText))
