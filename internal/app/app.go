@@ -85,6 +85,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.saveProgress()
 			return m, tea.Quit
 
+		case tea.KeyCtrlN:
+			m.skipToLevel(m.currentLevel.Number + 1)
+
+		case tea.KeyCtrlB:
+			m.skipToLevel(m.currentLevel.Number - 1)
+
 		case tea.KeyBackspace:
 			if m.state == stateDrilling {
 				m.drillState.HandleBackspace()
@@ -155,17 +161,20 @@ func (m Model) View() string {
 	sb.WriteString(m.kb.View())
 	sb.WriteString("\n\n")
 
-	sb.WriteString(ui.DimStyle.Render("esc/ctrl+c to quit"))
+	sb.WriteString(ui.DimStyle.Render("esc to quit    ctrl+n next level    ctrl+b prev level"))
 
 	content := sb.String()
 
-	// Center the content in the terminal
+	// Center the content block in the terminal without
+	// centering each line individually (which breaks keyboard stagger)
 	if m.width > 0 && m.height > 0 {
-		return lipgloss.Place(
-			m.width, m.height,
-			lipgloss.Center, lipgloss.Center,
-			content,
-		)
+		block := lipgloss.NewStyle().
+			Width(m.width).
+			Height(m.height).
+			Align(lipgloss.Center).
+			AlignVertical(lipgloss.Center).
+			Render(content)
+		return block
 	}
 
 	return content
@@ -273,6 +282,31 @@ func (m *Model) advancePhase() {
 	m.kb = keyboard.New(unlocked, m.firstPromptKey())
 	m.state = stateDrilling
 	m.message = ""
+}
+
+func (m *Model) skipToLevel(n int) {
+	total := len(level.All())
+	if n < 1 {
+		n = 1
+	}
+	if n > total {
+		n = total
+	}
+
+	m.progress.CurrentLevel = n
+	m.progress.CurrentPhase = progress.PhaseChars
+	m.currentLevel = level.Get(n)
+	m.currentPhase = progress.PhaseChars
+	m.phaseKeystrokes = 0
+	m.phaseErrors = 0
+	m.drillNum = 1
+
+	unlocked := unlockedKeySet(n)
+	m.drillState = m.generateDrill(unlocked)
+	m.kb = keyboard.New(unlocked, m.firstPromptKey())
+	m.state = stateDrilling
+	m.message = fmt.Sprintf("Jumped to Level %d: %s", n, m.currentLevel.Name)
+	m.saveProgress()
 }
 
 func (m *Model) advanceLevel() {
