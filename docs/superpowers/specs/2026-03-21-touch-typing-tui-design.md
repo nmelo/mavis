@@ -66,7 +66,7 @@ Each level introduces 2-4 new keys, paired ergonomically (matching fingers on op
 | 12 | c , | Middle, bottom row |
 | 13 | x . | Ring, bottom row |
 | 14 | z / | Pinky, bottom row |
-| 15 | space | Thumbs (formally introduced; implicitly available from level 5) |
+| 15 | space | Thumbs (formally introduced; accepted as input from level 5 onward for word/code drills but not shown in character drills or on the keyboard until level 15) |
 | 16 | shift + keys | Capitalization |
 | 17 | 1-0 | Number row |
 | 18 | symbols | - = [ ] etc. |
@@ -77,7 +77,7 @@ Each level has three sequential phases:
 
 1. **Character drills:** Raw repetition sequences built from new keys + all unlocked keys. New keys weighted at ~60%, review keys at ~40%. Short bursts of 20-30 characters, 10 drills per phase.
 
-2. **Word drills:** Real English words filtered to only contain unlocked characters. Drawn from an embedded word list. 10 drills per phase.
+2. **Word drills:** Real English words filtered to only contain unlocked characters. Drawn from an embedded word list. 10 drills per phase. Word drills are skipped for levels where fewer than ~3 distinct characters are unlocked (levels 1-2), since no meaningful English words exist with only those letters. These levels run character drills only.
 
 3. **Code drills:** Go and Python snippets using only unlocked characters. Unlocks around level 10+ when enough characters are available. Pre-curated snippets tagged with required character sets. 10 drills per phase.
 
