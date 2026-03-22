@@ -3,7 +3,7 @@ package ui
 import (
 	"testing"
 
-	"github.com/nmelo/typer/internal/level"
+	"github.com/nmelo/mavis/internal/level"
 )
 
 func TestEveryFingerHasColor(t *testing.T) {

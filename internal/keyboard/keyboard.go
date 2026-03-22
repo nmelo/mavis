@@ -4,8 +4,8 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/nmelo/typer/internal/level"
-	"github.com/nmelo/typer/internal/ui"
+	"github.com/nmelo/mavis/internal/level"
+	"github.com/nmelo/mavis/internal/ui"
 )
 
 var rows = [][]rune{

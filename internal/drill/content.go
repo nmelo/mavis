@@ -4,7 +4,7 @@ import (
 	"math/rand"
 	"strings"
 
-	"github.com/nmelo/typer/data"
+	"github.com/nmelo/mavis/data"
 )
 
 func LoadWordList() []string {

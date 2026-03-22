@@ -2,7 +2,7 @@ package ui
 
 import (
 	"github.com/charmbracelet/lipgloss"
-	"github.com/nmelo/typer/internal/level"
+	"github.com/nmelo/mavis/internal/level"
 )
 
 const (

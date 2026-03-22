@@ -3,7 +3,7 @@ package drill
 import (
 	"testing"
 
-	"github.com/nmelo/typer/internal/level"
+	"github.com/nmelo/mavis/internal/level"
 )
 
 func TestGenerateCharDrill(t *testing.T) {

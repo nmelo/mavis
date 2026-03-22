@@ -8,11 +8,11 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/nmelo/typer/internal/drill"
-	"github.com/nmelo/typer/internal/keyboard"
-	"github.com/nmelo/typer/internal/level"
-	"github.com/nmelo/typer/internal/progress"
-	"github.com/nmelo/typer/internal/ui"
+	"github.com/nmelo/mavis/internal/drill"
+	"github.com/nmelo/mavis/internal/keyboard"
+	"github.com/nmelo/mavis/internal/level"
+	"github.com/nmelo/mavis/internal/progress"
+	"github.com/nmelo/mavis/internal/ui"
 )
 
 const drillsPerPhase = 10
