@@ -6,13 +6,19 @@ Mavis needs positive feedback when users hit milestones. Currently, drill comple
 
 ## Tiers
 
-| Tier | Trigger | Visual | Duration |
-|------|---------|--------|----------|
-| Pass | Phase accuracy >= 95% | Green checkmark + green-styled message | Instant (no animation) |
-| Perfect | Drill accuracy = 100% | 12 sparkle particles + bold golden "PERFECT!" | ~1.5s |
-| Level-up | All phases for a level complete | 20 sparkle particles (wider spread) + "LEVEL N COMPLETE!" with color cycling | ~1.5s |
+| Tier | Trigger | Scope | Visual | Duration |
+|------|---------|-------|--------|----------|
+| Pass | Accuracy >= 95% | Per-phase (after 10th drill) | Green checkmark + green-styled message | Instant (no animation) |
+| Perfect | Accuracy = 100% | Per-drill (any single drill) | 12 sparkle particles + bold golden "PERFECT!" | ~1.5s |
+| Level-up | All phases for a level complete | Per-level | 20 sparkle particles (wider spread) + "LEVEL N COMPLETE!" with color cycling | ~1.5s |
 
 Pass tier has no animation. Perfect and Level-up tiers play a particle animation before showing the "Press Enter" prompt.
+
+**Precedence:** Higher tiers supersede lower ones. If the final drill in a phase is 100% and the phase passes, only the phase/level celebration fires (not both Perfect and Pass). Level-up supersedes all. Specifically:
+1. Check level-up first (all phases complete)
+2. Then check phase pass (>= 95% on 10th drill)
+3. Then check perfect drill (100% on any individual drill)
+4. Only one celebration fires per completion event
 
 ## Particle System
 
