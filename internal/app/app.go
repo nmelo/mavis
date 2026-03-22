@@ -26,6 +26,7 @@ const (
 	statePhaseComplete
 	stateLevelComplete
 	stateCelebrating
+	stateSelectingLevel
 )
 
 type Model struct {
@@ -43,8 +44,9 @@ type Model struct {
 	phaseKeystrokes int
 	phaseErrors     int
 
-	message     string
-	celebration *celebration
+	message       string
+	celebration   *celebration
+	levelSelector *levelSelector
 
 	width  int
 	height int
@@ -92,10 +94,50 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
+		// Level selector handles its own input
+		if m.state == stateSelectingLevel && m.levelSelector != nil {
+			switch msg.Type {
+			case tea.KeyEsc:
+				m.state = m.levelSelector.prevState
+				m.levelSelector = nil
+			case tea.KeyEnter:
+				ls := m.levelSelector
+				m.levelSelector = nil
+				m.skipToLevel(ls.selectedLevel())
+				m.currentPhase = ls.selectedPhase()
+				m.progress.CurrentPhase = m.currentPhase
+				unlocked := unlockedKeySet(m.currentLevel.Number)
+				m.drillState = m.generateDrill(unlocked)
+				m.kb = keyboard.New(unlocked, m.firstPromptKey())
+				m.saveProgress()
+			case tea.KeyUp:
+				m.levelSelector.moveUp()
+			case tea.KeyDown:
+				m.levelSelector.moveDown()
+			case tea.KeyTab:
+				m.levelSelector.toggleFocus()
+			case tea.KeyRunes:
+				if len(msg.Runes) > 0 {
+					switch msg.Runes[0] {
+					case 'k':
+						m.levelSelector.moveUp()
+					case 'j':
+						m.levelSelector.moveDown()
+					}
+				}
+			}
+			return m, nil
+		}
+
 		switch msg.Type {
 		case tea.KeyCtrlC, tea.KeyEsc:
 			m.saveProgress()
 			return m, tea.Quit
+
+		case tea.KeyCtrlL:
+			m.levelSelector = newLevelSelector(m.currentLevel.Number, m.currentPhase, m.state)
+			m.state = stateSelectingLevel
+			return m, nil
 
 		case tea.KeyCtrlN:
 			m.skipToLevel(m.currentLevel.Number + 1)
@@ -104,19 +146,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.skipToLevel(m.currentLevel.Number - 1)
 
 		case tea.KeyCtrlT:
-			// Cheat: trigger pass celebration
 			m.celebration = spawnCelebration(tierPass, m.state, "Phase complete! Accuracy: 97.3%.")
 			m.state = stateCelebrating
 			return m, nil
 
 		case tea.KeyCtrlY:
-			// Cheat: trigger perfect celebration
 			m.celebration = spawnCelebration(tierPerfect, m.state, "PERFECT!")
 			m.state = stateCelebrating
 			return m, tickCmd()
 
 		case tea.KeyCtrlU:
-			// Cheat: trigger level-up celebration
 			msg := fmt.Sprintf("Level %d complete!", m.currentLevel.Number)
 			m.celebration = spawnCelebration(tierLevelUp, m.state, msg)
 			m.state = stateCelebrating
@@ -156,7 +195,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case tea.KeySpace:
 			if m.state == stateDrilling {
-				// Ignore space during char drills (space is for word/code drills only)
 				if m.currentPhase == progress.PhaseChars {
 					break
 				}
@@ -175,6 +213,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
+	// Level selector takes over the full view
+	if m.state == stateSelectingLevel && m.levelSelector != nil {
+		content := m.levelSelector.render(m.progress, m.width)
+		if m.width > 0 && m.height > 0 {
+			return lipgloss.NewStyle().
+				Width(m.width).
+				Height(m.height).
+				Align(lipgloss.Center).
+				AlignVertical(lipgloss.Center).
+				Render(content)
+		}
+		return content
+	}
+
 	var sb strings.Builder
 
 	if m.state == stateCelebrating && m.celebration != nil {
@@ -232,9 +284,15 @@ func (m *Model) generateDrill(unlocked map[rune]bool) *drill.DrillState {
 			drillLength,
 		)
 	case progress.PhaseWords:
-		filtered := drill.FilterWords(m.words, unlocked)
-		words := drill.GenerateWordDrill(filtered, 5)
-		prompt = []rune(strings.Join(words, " "))
+		// Use curated story lines if available, fall back to random words
+		if drill.HasStory(m.currentLevel.Number) {
+			line := drill.GetStoryLine(m.currentLevel.Number, m.drillNum-1)
+			prompt = []rune(line)
+		} else {
+			filtered := drill.FilterWords(m.words, unlocked)
+			words := drill.GenerateWordDrill(filtered, 5)
+			prompt = []rune(strings.Join(words, " "))
+		}
 	case progress.PhaseCode:
 		allSnippets := drill.LoadCodeSnippets()
 		filtered := drill.FilterCodeSnippets(allSnippets, unlocked)
