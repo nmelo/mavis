@@ -32,16 +32,19 @@ func (k *Keyboard) View() string {
 	var sb strings.Builder
 
 	for rowIdx, row := range rows {
-		indent := strings.Repeat(" ", rowIdx+1)
+		indent := strings.Repeat("  ", rowIdx+1)
 		sb.WriteString(indent)
 
-		for _, key := range row {
+		for i, key := range row {
+			if i > 0 {
+				sb.WriteString(" ")
+			}
 			sb.WriteString(k.renderKey(key))
 		}
 		sb.WriteString("\n")
 	}
 
-	sb.WriteString("      ")
+	sb.WriteString("          ")
 	sb.WriteString(k.renderSpaceBar())
 	sb.WriteString("\n\n")
 
@@ -51,7 +54,7 @@ func (k *Keyboard) View() string {
 }
 
 func (k *Keyboard) renderKey(key rune) string {
-	label := string(key)
+	label := " " + string(key) + " "
 	if !k.unlocked[key] {
 		return lipgloss.NewStyle().
 			Foreground(lipgloss.Color(ui.ColorLocked)).

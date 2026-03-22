@@ -43,6 +43,9 @@ type Model struct {
 	phaseErrors     int
 
 	message string
+
+	width  int
+	height int
 }
 
 func New(prog *progress.Progress, progressPath string, words []string) Model {
@@ -71,6 +74,11 @@ func (m Model) Init() tea.Cmd {
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+		return m, nil
+
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyCtrlC, tea.KeyEsc:
@@ -128,7 +136,7 @@ func (m Model) View() string {
 	wpm := m.drillState.WPM()
 	acc := m.drillState.Accuracy()
 	sb.WriteString(ui.RenderTopBar(m.currentLevel.Name, wpm, acc, m.drillNum, drillsPerPhase))
-	sb.WriteString("\n\n")
+	sb.WriteString("\n\n\n")
 
 	sb.WriteString(ui.RenderPrompt(
 		m.drillState.Prompt,
@@ -143,12 +151,24 @@ func (m Model) View() string {
 		sb.WriteString("\n\n")
 	}
 
-	sb.WriteString(m.kb.View())
 	sb.WriteString("\n")
+	sb.WriteString(m.kb.View())
+	sb.WriteString("\n\n")
 
-	sb.WriteString(ui.DimStyle.Render("  esc/ctrl+c to quit"))
+	sb.WriteString(ui.DimStyle.Render("esc/ctrl+c to quit"))
 
-	return sb.String()
+	content := sb.String()
+
+	// Center the content in the terminal
+	if m.width > 0 && m.height > 0 {
+		return lipgloss.Place(
+			m.width, m.height,
+			lipgloss.Center, lipgloss.Center,
+			content,
+		)
+	}
+
+	return content
 }
 
 func (m *Model) generateDrill(unlocked map[rune]bool) *drill.DrillState {
