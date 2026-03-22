@@ -177,6 +177,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() string {
 	var sb strings.Builder
 
+	if m.state == stateCelebrating && m.celebration != nil {
+		sb.WriteString(m.celebration.render(m.width))
+		sb.WriteString("\n\n")
+	} else if m.message != "" {
+		msgStyle := lipgloss.NewStyle().Bold(true)
+		sb.WriteString(msgStyle.Render(m.message))
+		sb.WriteString("\n\n")
+	}
+
 	wpm := m.drillState.WPM()
 	acc := m.drillState.Accuracy()
 	sb.WriteString(ui.RenderTopBar(m.currentLevel.Name, wpm, acc, m.drillNum, drillsPerPhase))
@@ -188,15 +197,6 @@ func (m Model) View() string {
 		m.drillState.HasError,
 	))
 	sb.WriteString("\n\n")
-
-	if m.state == stateCelebrating && m.celebration != nil {
-		sb.WriteString(m.celebration.render(m.width))
-		sb.WriteString("\n\n")
-	} else if m.message != "" {
-		msgStyle := lipgloss.NewStyle().Bold(true)
-		sb.WriteString(msgStyle.Render(m.message))
-		sb.WriteString("\n\n")
-	}
 
 	sb.WriteString("\n")
 	sb.WriteString(m.kb.View())

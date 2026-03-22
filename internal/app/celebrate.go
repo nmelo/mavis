@@ -36,8 +36,16 @@ type particle struct {
 	lifetime int
 }
 
+type shootingStar struct {
+	x, y   int // current position
+	dx, dy int // direction per tick
+	trail  []particle
+	life   int // ticks remaining
+}
+
 type celebration struct {
 	particles []particle
+	stars     []shootingStar
 	message   string
 	msgStyle  lipgloss.Style
 	nextState state
@@ -67,6 +75,7 @@ func spawnCelebration(t tier, nextState state, message string) *celebration {
 	case tierLevelUp:
 		c.msgStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FFD700"))
 		c.particles = makeParticles(20, 30, 4)
+		c.stars = makeShootingStars(2)
 	}
 
 	return c
@@ -86,12 +95,29 @@ func makeParticles(count, spreadX, spreadY int) []particle {
 	return particles
 }
 
+func makeShootingStars(count int) []shootingStar {
+	stars := make([]shootingStar, count)
+	for i := range stars {
+		// Start from left side, sweep right and down
+		stars[i] = shootingStar{
+			x:    -25 - rand.Intn(10),
+			y:    -3 - rand.Intn(3),
+			dx:   3 + rand.Intn(2),
+			dy:   1,
+			life: 12 + rand.Intn(4),
+		}
+	}
+	return stars
+}
+
 func (c *celebration) active() bool {
-	return len(c.particles) > 0
+	return len(c.particles) > 0 || len(c.stars) > 0
 }
 
 func (c *celebration) tick() {
 	c.tickCount++
+
+	// Age particles
 	alive := c.particles[:0]
 	for i := range c.particles {
 		c.particles[i].lifetime--
@@ -101,6 +127,37 @@ func (c *celebration) tick() {
 		}
 	}
 	c.particles = alive
+
+	// Move shooting stars and leave trails
+	aliveStars := c.stars[:0]
+	for i := range c.stars {
+		s := &c.stars[i]
+		// Leave a trail particle at current position
+		s.trail = append(s.trail, particle{
+			x: s.x, y: s.y,
+			char:     '-',
+			colorIdx: 3, // index color (green/teal)
+			lifetime: 4,
+		})
+		// Age trail particles
+		aliveTail := s.trail[:0]
+		for j := range s.trail {
+			s.trail[j].lifetime--
+			s.trail[j].colorIdx = (s.trail[j].colorIdx + 1) % len(sparkleColors)
+			if s.trail[j].lifetime > 0 {
+				aliveTail = append(aliveTail, s.trail[j])
+			}
+		}
+		s.trail = aliveTail
+		// Move the star
+		s.x += s.dx
+		s.y += s.dy
+		s.life--
+		if s.life > 0 {
+			aliveStars = append(aliveStars, *s)
+		}
+	}
+	c.stars = aliveStars
 }
 
 func (c *celebration) render(width int) string {
@@ -110,6 +167,16 @@ func (c *celebration) render(width int) string {
 	grid := map[[2]int]particle{}
 	for _, p := range c.particles {
 		grid[[2]int{centerX + p.x, centerY + p.y}] = p
+	}
+	// Add shooting star heads and trails to grid
+	for _, s := range c.stars {
+		// Star head
+		grid[[2]int{centerX + s.x, centerY + s.y}] = particle{
+			char: '*', colorIdx: 4, // thumb/yellow
+		}
+		for _, t := range s.trail {
+			grid[[2]int{centerX + t.x, centerY + t.y}] = t
+		}
 	}
 
 	var sb strings.Builder
